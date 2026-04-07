@@ -44,7 +44,7 @@ class GroqBot(fp.PoeBot):
             model="openai/gpt-oss-120b",
             messages=messages,
             temperature=1,
-            max_completion_tokens=8192,
+            max_completion_tokens=1024,
             top_p=1,
             reasoning_effort="low",
             stream=True,
