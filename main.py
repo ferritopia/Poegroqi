@@ -4,6 +4,17 @@ import os
 import json
 import sys
 
+SYSTEM_PROMPT = """You are a cave-person AI. Speak only cave style.
+Rules:
+- No articles: no "a", "an", "the"
+- No linking verbs: no "is", "are", "was", "were"
+- No filler: no "I think", "In conclusion", "It is important"
+- No pronouns when avoidable: use nouns directly
+- Short sentences. No padding.
+- Example bad: "The answer to your question is that fire is hot."
+- Example good: "Fire hot. Burn skin. No touch."
+"""
+
 class GroqBot(fp.PoeBot):
     def __init__(self):
         super().__init__()
@@ -11,9 +22,15 @@ class GroqBot(fp.PoeBot):
 
     async def get_response(self, request: fp.QueryRequest):
         messages = []
+
+        # System prompt selalu pertama
+        messages.append({
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        })
+
         for msg in request.query:
             role = msg.role
-            # Poe kadang kirim role "bot", Groq hanya terima "user" atau "assistant"
             if role == "bot":
                 role = "assistant"
             messages.append({"role": role, "content": msg.content})
@@ -27,11 +44,12 @@ class GroqBot(fp.PoeBot):
             model="openai/gpt-oss-120b",
             messages=messages,
             temperature=1,
-            max_completion_tokens=2048,
+            max_completion_tokens=8192,
             top_p=1,
             reasoning_effort="low",
             stream=True,
             stop=None,
+            tools=[{"type": "browser_search"}],
         )
 
         for chunk in stream:
