@@ -27,3 +27,4 @@ class GroqBot(fp.PoeBot):
                 yield fp.PartialResponse(text=delta)
 
 app = fp.make_app(GroqBot(), access_key=os.environ["POE_ACCESS_KEY"])
+# deploy trigger
