@@ -1,6 +1,8 @@
 import fastapi_poe as fp
 from groq import Groq
 import os
+import json
+import sys
 
 class GroqBot(fp.PoeBot):
     def __init__(self):
@@ -8,10 +10,18 @@ class GroqBot(fp.PoeBot):
         self.client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
     async def get_response(self, request: fp.QueryRequest):
-        messages = [
-            {"role": msg.role, "content": msg.content}
-            for msg in request.query
-        ]
+        messages = []
+        for msg in request.query:
+            role = msg.role
+            # Poe kadang kirim role "bot", Groq hanya terima "user" atau "assistant"
+            if role == "bot":
+                role = "assistant"
+            messages.append({"role": role, "content": msg.content})
+
+        # Debug log
+        print(f"Messages count: {len(messages)}", file=sys.stderr)
+        print(f"Roles: {[m['role'] for m in messages]}", file=sys.stderr)
+        print(f"Payload size: {len(json.dumps(messages))} bytes", file=sys.stderr)
 
         stream = self.client.chat.completions.create(
             model="openai/gpt-oss-120b",
@@ -22,7 +32,6 @@ class GroqBot(fp.PoeBot):
             reasoning_effort="low",
             stream=True,
             stop=None,
-            tools=[{"type": "browser_search"}]
         )
 
         for chunk in stream:
