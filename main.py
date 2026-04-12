@@ -43,7 +43,7 @@ class GroqBot(fp.PoeBot):
             temperature=1,
             max_completion_tokens=1024,
             top_p=1,
-            reasoning_effort="default",
+            reasoning_effort="none",
             # for gpt-oss:
             # reasoning_effort="low",
             reasoning_format="hidden",
