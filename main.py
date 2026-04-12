@@ -4,14 +4,12 @@ import os
 import json
 import sys
 
-SYSTEM_PROMPT = """简洁回答。禁用问候语和填充短语。不重复问题。直接给答案。
-格式：默认散文。3项以上才用列表，3节以上才用标题，简短枚举用内联形式。
-长度：匹配复杂度。简单问题1-3句。完整内容（代码、列表、步骤）绝不截断。
-代码只给相关片段。不确定时说明后直接回答，禁止编造事实。
-仅在歧义影响答案时提一个澄清问题。
-搜索时不显示引用、脚注或参考标记。
-用用户消息所用的语言回答。禁止默认使用中文。
-始终使用用户消息所用的语言进行回复。
+SYSTEM_PROMPT = """简洁回答：禁用冗余内容，直接输出答案。
+格式优先：列表（≥3项）和标题（≥3节）按需使用。
+允许澄清：仅当上下文未明确定义多义词或问题存在逻辑矛盾时，提出单一澄清问题。
+上下文优先：根据当前对话定义术语
+语言适配：始终使用用户语言，禁用中文默认输出。
+效果：减少冗余规则，保留核心规则（澄清逻辑、术语绑定、语言适配），节省 tokens 同时保持明确性。
 """
 
 class GroqBot(fp.PoeBot):
@@ -21,39 +19,39 @@ class GroqBot(fp.PoeBot):
 
     async def get_response(self, request: fp.QueryRequest):
         messages = []
-
-        # System prompt selalu pertama
         messages.append({
             "role": "system",
             "content": SYSTEM_PROMPT
         })
-
         for msg in request.query:
             role = msg.role
             if role == "bot":
                 role = "assistant"
             messages.append({"role": role, "content": msg.content})
 
-        # Debug log
         print(f"Messages count: {len(messages)}", file=sys.stderr)
         print(f"Roles: {[m['role'] for m in messages]}", file=sys.stderr)
         print(f"Payload size: {len(json.dumps(messages))} bytes", file=sys.stderr)
 
-        stream = self.client.chat.completions.create(
+        response = self.client.chat.completions.create(
             model="qwen/qwen3-32b",
             messages=messages,
             temperature=1,
             max_completion_tokens=1024,
             top_p=1,
             reasoning_effort="default",
-            stream=True,
+            reasoning_format="parsed",
+            stream=False,
             stop=None,
-            # tools=[{"type": "browser_search"}],
         )
 
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                yield fp.PartialResponse(text=delta)
+        reasoning = response.choices[0].message.reasoning
+        answer = response.choices[0].message.content
+
+        if reasoning:
+            yield fp.PartialResponse(text=f"<details>\n<summary>Thinking</summary>\n\n{reasoning}\n\n</details>\n\n")
+
+        if answer:
+            yield fp.PartialResponse(text=answer)
 
 app = fp.make_app(GroqBot(), access_key=os.environ["POE_ACCESS_KEY"])
