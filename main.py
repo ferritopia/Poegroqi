@@ -19,39 +19,42 @@ class GroqBot(fp.PoeBot):
 
     async def get_response(self, request: fp.QueryRequest):
         messages = []
+
+        # System prompt selalu pertama
         messages.append({
             "role": "system",
             "content": SYSTEM_PROMPT
         })
+
         for msg in request.query:
             role = msg.role
             if role == "bot":
                 role = "assistant"
             messages.append({"role": role, "content": msg.content})
 
+        # Debug log
         print(f"Messages count: {len(messages)}", file=sys.stderr)
         print(f"Roles: {[m['role'] for m in messages]}", file=sys.stderr)
         print(f"Payload size: {len(json.dumps(messages))} bytes", file=sys.stderr)
 
-        response = self.client.chat.completions.create(
+        stream = self.client.chat.completions.create(
             model="qwen/qwen3-32b",
             messages=messages,
             temperature=1,
             max_completion_tokens=1024,
             top_p=1,
             reasoning_effort="default",
-            reasoning_format="parsed",
-            stream=False,
+            # for gpt-oss:
+            # reasoning_effort="low",
+            reasoning_format="hidden",
+            stream=True,
             stop=None,
+            # tools=[{"type": "browser_search"}],
         )
 
-        reasoning = response.choices[0].message.reasoning
-        answer = response.choices[0].message.content
-
-        if reasoning:
-            yield fp.PartialResponse(text=f"<details>\n<summary>Thinking</summary>\n\n{reasoning}\n\n</details>\n\n")
-
-        if answer:
-            yield fp.PartialResponse(text=answer)
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield fp.PartialResponse(text=delta)
 
 app = fp.make_app(GroqBot(), access_key=os.environ["POE_ACCESS_KEY"])
