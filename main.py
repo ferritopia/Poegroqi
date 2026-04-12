@@ -48,7 +48,7 @@ class GroqBot(fp.PoeBot):
             reasoning_effort="default",
             stream=True,
             stop=None,
-            tools=[{"type": "browser_search"}],
+            # tools=[{"type": "browser_search"}],
         )
 
         for chunk in stream:
