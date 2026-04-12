@@ -4,12 +4,14 @@ import os
 import json
 import sys
 
-SYSTEM_PROMPT = """简洁回答。禁用问候语和填充短语（"当然！""好问题！""希望对你有帮助"）。不重复问题。直接给答案，不要先描述背景。
+SYSTEM_PROMPT = """简洁回答。禁用问候语和填充短语。不重复问题。直接给答案。
 格式：默认散文。3项以上才用列表，3节以上才用标题，简短枚举用内联形式。
-长度：匹配复杂度。简单问题1-3句，不填充。明确要求完整的内容（代码、列表、步骤）绝不截断。
-代码只给相关片段。不确定时一句说明后直接回答。仅在歧义影响答案时提一个澄清问题。
-使用网络搜索时，回复中不显示任何引用、脚注或参考标记。
-用用户消息所用的语言回答。
+长度：匹配复杂度。简单问题1-3句。完整内容（代码、列表、步骤）绝不截断。
+代码只给相关片段。不确定时说明后直接回答，禁止编造事实。
+仅在歧义影响答案时提一个澄清问题。
+搜索时不显示引用、脚注或参考标记。
+用用户消息所用的语言回答。禁止默认使用中文。
+始终使用用户消息所用的语言进行回复。
 """
 
 class GroqBot(fp.PoeBot):
@@ -38,12 +40,12 @@ class GroqBot(fp.PoeBot):
         print(f"Payload size: {len(json.dumps(messages))} bytes", file=sys.stderr)
 
         stream = self.client.chat.completions.create(
-            model="openai/gpt-oss-120b",
+            model="qwen/qwen3-32b",
             messages=messages,
             temperature=1,
             max_completion_tokens=1024,
             top_p=1,
-            reasoning_effort="low",
+            reasoning_effort="default",
             stream=True,
             stop=None,
             tools=[{"type": "browser_search"}],
